@@ -1,39 +1,12 @@
-import { useEffect, useState } from 'react';
+import { Routes, Route } from 'react-router-dom'
+import Login from './pages/Login'
+import Home from './pages/Home'
 
-interface User {
-  id: number;
-  nom: string;
-}
-
-function App() {
-  const [users, setUsers] = useState<User[]>([]);
-
-  useEffect(() => {
-    fetch('http://localhost:5000/users')
-      .then((res) => res.json())
-      .then((data) => {
-        setUsers(data);
-      })
-      .catch((error) => {
-        console.error('Erreur fetch:', error);
-      });
-  }, []);
-
+export default function App() {
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Utilisateurs</h1>
-
-      {users.length === 0 ? (
-        <p>Aucun utilisateur</p>
-      ) : (
-        <ul>
-          {users.map((user) => (
-            <li key={user.id}>{user.nom}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/home" element={<Home />} />
+    </Routes>
+  )
 }
-
-export default App;

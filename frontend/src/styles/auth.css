@@ -1,0 +1,38 @@
+/* Fond flouté + image (tu peux changer l’URL ou mettre une image locale plus tard) */
+.auth-bg {
+    min-height: 100vh;
+    background:
+      linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)),
+      url("https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=1600&q=60");
+    background-size: cover;
+    background-position: center;
+  }
+  
+  /* Carte dégradée */
+  .auth-card {
+    background: linear-gradient(180deg, rgba(104, 117, 245, .95), rgba(32, 201, 151, .92));
+    border: 0;
+    border-radius: 14px;
+    box-shadow: 0 20px 55px rgba(0,0,0,.35);
+    color: #fff;
+  }
+  
+  .auth-card .form-control {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.25);
+    color: #fff;
+  }
+  
+  .auth-card .form-control::placeholder {
+    color: rgba(255,255,255,.7);
+  }
+  
+  .auth-card .form-control:focus {
+    border-color: rgba(255,255,255,.6);
+    box-shadow: 0 0 0 .2rem rgba(255,255,255,.15);
+  }
+  
+  .auth-title {
+    letter-spacing: .12em;
+  }
+  

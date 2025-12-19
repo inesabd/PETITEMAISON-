@@ -1,44 +1,134 @@
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
+require('dotenv').config()
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+const express = require('express')
+const cors = require('cors')
+const { Pool } = require('pg')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 
-// 🔌 Connexion à PostgreSQL
+const app = express()
+app.use(cors({ origin: 'http://localhost:5173' })) // frontend
+app.use(express.json())
+
+// 🔌 Connexion PostgreSQL
 const pool = new Pool({
-  user: 'postgres',              // ton utilisateur PostgreSQL
-  host: 'localhost',
-  database: 'ma_petitemaison',   // nom de ta base
-  password: process.env.DB_PASSWORD || 'ines0310',  // Utilise une variable d'environnement
-  port: 5432,
-});
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
+  port: Number(process.env.DB_PORT),
+})
 
-// 🔎 Route test (optionnelle)
+// 🔎 Route test
 app.get('/', (req, res) => {
-  res.send('Backend OK');
-});
+  res.send('Backend OK ✅')
+})
 
-// 👤 Récupérer les utilisateurs depuis PostgreSQL
+// 👤 Test users
 app.get('/users', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT * FROM public.utilisateurs'
-    );
-    res.json(result.rows);
+    const result = await pool.query('SELECT * FROM public.utilisateurs')
+    res.json(result.rows)
   } catch (error) {
-    console.error('Erreur PostgreSQL:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    console.error('Erreur PostgreSQL:', error)
+    res.status(500).json({ error: 'Erreur serveur' })
   }
-});
+})
 
-// 📦 Items (encore en dur pour l’instant)
-app.get('/items', (req, res) => {
-  res.json([{ id: 1, title: 'Figurine Evil Ed' }]);
-});
+/**
+ * ✅ REGISTER
+ * body: { username, email, password }
+ */
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body
+
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Champs manquants' })
+    }
+
+    // email déjà utilisé ?
+    const existing = await pool.query(
+      'SELECT id FROM public.utilisateurs WHERE email = $1',
+      [email],
+    )
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ message: 'Email déjà utilisé' })
+    }
+
+    // hash password
+    const passwordHash = await bcrypt.hash(password, 10)
+
+    // insert
+    const insert = await pool.query(
+      `INSERT INTO public.utilisateurs (nom, email, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id, nom, email, created_at`,
+      [username, email, passwordHash],
+    )
+
+    return res.status(201).json({ user: insert.rows[0] })
+  } catch (err) {
+    console.error('REGISTER error:', err)
+    return res.status(500).json({ message: 'Erreur serveur' })
+  }
+})
+
+/**
+ * ✅ LOGIN
+ * body: { email, password }
+ * response: { token, user }
+ */
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Champs manquants' })
+    }
+
+    const result = await pool.query(
+      'SELECT id, nom, email, password_hash FROM public.utilisateurs WHERE email = $1',
+      [email],
+    )
+
+    if (result.rows.length === 0) {
+      return res
+        .status(401)
+        .json({ message: 'Email ou mot de passe incorrect' })
+    }
+
+    const user = result.rows[0]
+
+    const ok = await bcrypt.compare(password, user.password_hash)
+    if (!ok) {
+      return res
+        .status(401)
+        .json({ message: 'Email ou mot de passe incorrect' })
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: 'JWT_SECRET manquant dans .env' })
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '2h' },
+    )
+
+    return res.json({
+      token,
+      user: { id: user.id, nom: user.nom, email: user.email },
+    })
+  } catch (err) {
+    console.error('LOGIN error:', err)
+    return res.status(500).json({ message: 'Erreur serveur' })
+  }
+})
 
 // 🚀 Lancer le serveur
-app.listen(5000, () => {
-  console.log('API running on http://localhost:5000');
-});
+const PORT = process.env.PORT || 5000
+app.listen(PORT, () => {
+  console.log(`API running on http://localhost:${PORT}`)
+})
