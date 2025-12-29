@@ -1,13 +1,17 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 export default function Home() {
   const [search, setSearch] = useState("")
+  const navigate = useNavigate()
 
   const handleSearch = () => {
     const q = search.trim()
-    if (!q) return
-    console.log("Recherche:", q)
-    // Étape suivante: redirection vers /products?q=... ou appel API
+    if (!q) {
+      navigate("/products")
+      return
+    }
+    navigate(`/products?search=${encodeURIComponent(q)}`)
   }
 
   return (
@@ -60,7 +64,7 @@ export default function Home() {
             Recherchez un produit, une figurine, un blu-ray ou un jeu.
           </p>
 
-          {/* ✅ BARRE DE RECHERCHE + ICÔNE CLIQUABLE */}
+          {/* 🔎 BARRE DE RECHERCHE */}
           <div className="mt-4">
             <form
               onSubmit={(e) => {
@@ -68,7 +72,10 @@ export default function Home() {
                 handleSearch()
               }}
             >
-              <div className="input-group input-group-lg" style={{ maxWidth: 700, margin: "0 auto" }}>
+              <div
+                className="input-group input-group-lg"
+                style={{ maxWidth: 700, margin: "0 auto" }}
+              >
                 <input
                   className="form-control"
                   placeholder="Rechercher tous les produits..."
@@ -104,7 +111,9 @@ export default function Home() {
                 <div className="card h-100">
                   <div className="card-body">
                     <div className="fw-semibold">{item.title}</div>
-                    <div className="text-muted small mt-1">{item.subtitle}</div>
+                    <div className="text-muted small mt-1">
+                      {item.subtitle}
+                    </div>
                     <button className="btn btn-sm btn-outline-dark mt-3">
                       Voir
                     </button>
