@@ -127,6 +127,41 @@ app.post('/auth/login', async (req, res) => {
   }
 })
 
+/**
+ * ✅ PRODUITS + RECHERCHE
+ * GET /products
+ * GET /products?search=evil
+ */
+app.get('/products', async (req, res) => {
+  const search = (req.query.search || '').trim()
+
+  try {
+    // Si search est vide -> tous les produits
+    if (!search) {
+      const result = await pool.query(
+        `SELECT id, titre, description, categorie, prix, image_url, created_at
+         FROM public.produits
+         ORDER BY id DESC`,
+      )
+      return res.json(result.rows)
+    }
+
+    // Sinon -> recherche (titre OU description)
+    const result = await pool.query(
+      `SELECT id, titre, description, categorie, prix, image_url, created_at
+       FROM public.produits
+       WHERE titre ILIKE $1 OR description ILIKE $1
+       ORDER BY id DESC`,
+      [`%${search}%`],
+    )
+
+    return res.json(result.rows)
+  } catch (err) {
+    console.error('PRODUCTS error:', err)
+    return res.status(500).json({ message: 'Erreur serveur' })
+  }
+})
+
 // 🚀 Lancer le serveur
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
