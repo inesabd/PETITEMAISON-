@@ -6,8 +6,33 @@ on:
 
 jobs:
   backend:
-    name: Backend - install
+    name: Backend - install + DB check
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: petitemaison_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d petitemaison_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DB_USER: postgres
+      DB_HOST: localhost
+      DB_NAME: petitemaison_test
+      DB_PASSWORD: postgres
+      DB_PORT: 5432
+      JWT_SECRET: test_secret_ci
+      PORT: 5000
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,6 +47,24 @@ jobs:
       - name: Install dependencies
         working-directory: Backend
         run: npm ci
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Apply DB schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d petitemaison_test -f Backend/db/schema.sql
+
+      - name: Start backend
+        working-directory: Backend
+        run: |
+          node index.js &
+          sleep 2
+
+      - name: Smoke test /products
+        run: curl -f http://localhost:5000/products
 
   frontend:
     name: Frontend - install & build
