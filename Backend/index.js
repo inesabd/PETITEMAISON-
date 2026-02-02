@@ -6,8 +6,23 @@ const { Pool } = require('pg')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
+// ✅ AJOUT pour lire schema.sql
+const fs = require('fs')
+const path = require('path')
+
 const app = express()
-app.use(cors({ origin: 'http://localhost:5173' })) // frontend
+
+// ✅ IMPORTANT: sur Render, le frontend ne sera plus localhost
+// Pour l'instant on autorise localhost + ton futur domaine Vercel
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      process.env.FRONTEND_URL, // tu le mettras plus tard dans Render
+    ].filter(Boolean),
+  }),
+)
+
 app.use(express.json())
 
 // 🔌 Connexion PostgreSQL
@@ -17,7 +32,25 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: Number(process.env.DB_PORT),
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false, // ✅ utile sur Render selon l’URL
 })
+
+// ✅ AJOUT : appliquer schema.sql une seule fois au démarrage
+async function applySchema() {
+  try {
+    const schemaPath = path.join(__dirname, 'schema.sql') // Backend/schema.sql
+
+    if (fs.existsSync(schemaPath)) {
+      const sql = fs.readFileSync(schemaPath, 'utf8')
+      await pool.query(sql)
+      console.log('✅ Database schema applied')
+    } else {
+      console.log('ℹ️ No schema.sql found (skip)')
+    }
+  } catch (err) {
+    console.error('❌ Schema apply error:', err)
+  }
+}
 
 // 🔎 Route test
 app.get('/', (req, res) => {
@@ -47,7 +80,6 @@ app.post('/auth/register', async (req, res) => {
       return res.status(400).json({ message: 'Champs manquants' })
     }
 
-    // email déjà utilisé ?
     const existing = await pool.query(
       'SELECT id FROM public.utilisateurs WHERE email = $1',
       [email],
@@ -56,10 +88,8 @@ app.post('/auth/register', async (req, res) => {
       return res.status(409).json({ message: 'Email déjà utilisé' })
     }
 
-    // hash password
     const passwordHash = await bcrypt.hash(password, 10)
 
-    // insert
     const insert = await pool.query(
       `INSERT INTO public.utilisateurs (nom, email, password_hash)
        VALUES ($1, $2, $3)
@@ -136,7 +166,6 @@ app.get('/products', async (req, res) => {
   const search = (req.query.search || '').trim()
 
   try {
-    // Si search est vide -> tous les produits
     if (!search) {
       const result = await pool.query(
         `SELECT id, titre, description, categorie, prix, image_url, created_at
@@ -146,7 +175,6 @@ app.get('/products', async (req, res) => {
       return res.json(result.rows)
     }
 
-    // Sinon -> recherche (titre OU description)
     const result = await pool.query(
       `SELECT id, titre, description, categorie, prix, image_url, created_at
        FROM public.produits
@@ -162,8 +190,11 @@ app.get('/products', async (req, res) => {
   }
 })
 
-// 🚀 Lancer le serveur
+// 🚀 Lancer le serveur (applique schema AVANT)
 const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`API running on http://localhost:${PORT}`)
+
+applySchema().finally(() => {
+  app.listen(PORT, () => {
+    console.log(`API running on http://localhost:${PORT}`)
+  })
 })
