@@ -29,9 +29,10 @@ jobs:
           action: "upload"
 
           # CONFIG CORRECTE POUR VITE
-          app_location: "frontend"
+          app_location: "."
           api_location: ""
-          output_location: "dist"
+          output_location: "frontend/dist"
+
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
