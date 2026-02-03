@@ -7,16 +7,39 @@ const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
 const app = express()
-app.use(cors({ origin: 'http://localhost:5173' })) // frontend
+
+// ✅ CORS: local + prod (FRONTEND_URL sur Azure)
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL, // ex: https://xxxx.azurestaticapps.net
+].filter(Boolean)
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      // autorise curl/postman (pas d'origin)
+      if (!origin) return cb(null, true)
+      return allowedOrigins.includes(origin)
+        ? cb(null, true)
+        : cb(new Error('Not allowed by CORS'))
+    },
+    credentials: true,
+  }),
+)
+
 app.use(express.json())
 
-// 🔌 Connexion PostgreSQL
+// ✅ PostgreSQL (Azure = SSL en production)
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
-  port: Number(process.env.DB_PORT),
+  port: Number(process.env.DB_PORT || 5432),
+  ssl:
+    process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
 })
 
 // 🔎 Route test
@@ -108,7 +131,9 @@ app.post('/auth/login', async (req, res) => {
     }
 
     if (!process.env.JWT_SECRET) {
-      return res.status(500).json({ message: 'JWT_SECRET manquant dans .env' })
+      return res
+        .status(500)
+        .json({ message: 'JWT_SECRET manquant dans la config' })
     }
 
     const token = jwt.sign(
@@ -136,7 +161,6 @@ app.get('/products', async (req, res) => {
   const search = (req.query.search || '').trim()
 
   try {
-    // Si search est vide -> tous les produits
     if (!search) {
       const result = await pool.query(
         `SELECT id, titre, description, categorie, prix, image_url, created_at
@@ -146,7 +170,6 @@ app.get('/products', async (req, res) => {
       return res.json(result.rows)
     }
 
-    // Sinon -> recherche (titre OU description)
     const result = await pool.query(
       `SELECT id, titre, description, categorie, prix, image_url, created_at
        FROM public.produits
@@ -162,8 +185,8 @@ app.get('/products', async (req, res) => {
   }
 })
 
-// 🚀 Lancer le serveur
+// ✅ Listen Azure: PORT fourni par Azure + host 0.0.0.0
 const PORT = process.env.PORT || 5000
-app.listen(PORT, () => {
-  console.log(`API running on http://localhost:${PORT}`)
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`API running on port ${PORT}`)
 })
