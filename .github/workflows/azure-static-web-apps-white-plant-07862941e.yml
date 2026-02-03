@@ -28,11 +28,11 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
 
-          # CONFIG CORRECTE POUR VITE
-          app_location: "."
+          # CONFIG VITE CORRIGÉE
+          app_location: "frontend"
           api_location: ""
-          output_location: "frontend/dist"
-
+          output_location: "dist"
+          app_build_command: "npm install && npm run build"
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
