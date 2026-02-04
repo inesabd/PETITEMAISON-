@@ -6,8 +6,7 @@ on:
       - main
 
 env:
-  # URL du backend Azure - À MODIFIER avec ton URL réelle
-  VITE_API_URL: https://petitemaison-backend.azurewebsites.net
+  VITE_API_URL: https://petitemaison-backend-gxe2erdqasb9bkd2.francecentral-01.azurewebsites.net
 
 jobs:
   deploy:
