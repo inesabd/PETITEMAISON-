@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import { login } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,19 +23,11 @@ export default function Login() {
 
     try {
       const data = await login({ email, password });
-
-      // Attendu côté backend: { token, user }
       setAuth(data.token, data.user);
-
-      // si tu veux désactiver "remember", on peut éviter localStorage (on ajustera après)
-      if (!remember) {
-        // petit “hack” simple : on videra au refresh (on améliorera ensuite)
-        // pour l’instant on garde simple
-      }
-
       navigate('/home');
-    } catch (err: any) {
-      setError(err.message || 'Erreur');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -41,73 +35,131 @@ export default function Login() {
 
   return (
     <AuthLayout>
-      <div className="card auth-card p-4">
-        <div className="text-center mb-3">
-          <div className="rounded-circle bg-white d-inline-flex align-items-center justify-content-center"
-               style={{ width: 64, height: 64 }}>
-            <span style={{ fontSize: 28 }}>🔒</span>
+      <div className="pm-auth-card" style={{ maxWidth: 420, margin: '0 auto' }}>
+        {/* Header */}
+        <div className="pm-auth-header">
+          <div className="pm-auth-icon">
+            <Lock size={24} />
           </div>
-          <h2 className="auth-title mt-3 mb-0">LOG IN</h2>
+          <h1 className="pm-auth-title">Connexion</h1>
+          <p className="pm-auth-subtitle">
+            Accédez à votre espace collectionneur
+          </p>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label">Email</label>
-            <input
-              className="form-control"
-              placeholder="ex: user@mail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-            />
-          </div>
-
-          <div className="mb-2">
-            <label className="form-label">Mot de passe</label>
-            <input
-              className="form-control"
-              placeholder="********"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              required
-            />
-          </div>
-
-          <div className="d-flex align-items-center justify-content-between my-3">
-            <div className="form-check">
+          {/* Email Field */}
+          <div className="pm-input-group">
+            <label className="pm-label" htmlFor="email">
+              Adresse email
+            </label>
+            <div className="pm-input-icon-wrapper">
               <input
-                className="form-check-input"
-                id="remember"
+                id="email"
+                type="email"
+                className="pm-input"
+                placeholder="vous@exemple.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <span className="pm-input-icon">
+                <Mail size={18} />
+              </span>
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div className="pm-input-group">
+            <label className="pm-label" htmlFor="password">
+              Mot de passe
+            </label>
+            <div className="pm-input-icon-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="pm-input"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="pm-input-icon"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  pointerEvents: 'auto'
+                }}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Remember Me & Forgot Password */}
+          <div className="pm-flex pm-flex-between" style={{ marginBottom: 'var(--space-lg)' }}>
+            <label className="pm-checkbox-wrapper">
+              <input
                 type="checkbox"
+                className="pm-checkbox"
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
-              <label className="form-check-label" htmlFor="remember">
-                Remember me
-              </label>
-            </div>
-
-            <small className="opacity-75">Forgot password?</small>
+              <span className="pm-checkbox-label">Se souvenir de moi</span>
+            </label>
+            <a
+              href="#"
+              className="pm-auth-footer-link"
+              style={{ fontSize: '0.8125rem' }}
+            >
+              Mot de passe oublié ?
+            </a>
           </div>
 
+          {/* Error Alert */}
           {error && (
-            <div className="alert alert-danger py-2" role="alert">
+            <div className="pm-alert pm-alert-error">
               {error}
             </div>
           )}
 
-          <button className="btn btn-light w-100 fw-semibold" disabled={loading}>
-            {loading ? 'Connexion...' : 'Login'}
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="pm-btn pm-btn-primary pm-btn-lg"
+            style={{ width: '100%' }}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="pm-spinner" />
+                Connexion...
+              </>
+            ) : (
+              'Se connecter'
+            )}
           </button>
-
-          <div className="text-center mt-3">
-            <small>
-              Pas de compte ? <Link className="text-white fw-semibold" to="/register">Créer un compte</Link>
-            </small>
-          </div>
         </form>
+
+        {/* Footer */}
+        <div className="pm-auth-footer">
+          <p className="pm-auth-footer-text">
+            Pas encore de compte ?{' '}
+            <Link to="/register" className="pm-auth-footer-link">
+              Créer un compte
+            </Link>
+          </p>
+        </div>
       </div>
     </AuthLayout>
   );

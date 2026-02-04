@@ -14,14 +14,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install deps
+      - name: Install dependencies
         working-directory: Backend
-        run: npm ci
+        run: npm ci --omit=dev
 
-      - name: Zip backend
+      - name: Create deployment package
         run: |
           cd Backend
-          zip -r ../backend.zip . -x "**/node_modules/**"
+          zip -r ../backend.zip . -x "*.git*" -x "*.env*"
 
       - name: Deploy to Azure Web App
         uses: Azure/webapps-deploy@v3

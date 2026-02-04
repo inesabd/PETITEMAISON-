@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { UserPlus, Mail, Eye, EyeOff, User } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import { register } from '../api/auth';
 
@@ -9,20 +10,28 @@ export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!acceptTerms) {
+      setError('Veuillez accepter les conditions d\'utilisation');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await register({ username, email, password });
-      // après inscription, on renvoie vers login
-      navigate('/login');
-    } catch (err: any) {
-      setError(err.message || 'Erreur');
+      navigate('/');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Une erreur est survenue';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -30,67 +39,160 @@ export default function Register() {
 
   return (
     <AuthLayout>
-      <div className="card auth-card p-4">
-        <div className="text-center mb-3">
-          <div className="rounded-circle bg-white d-inline-flex align-items-center justify-content-center"
-               style={{ width: 64, height: 64 }}>
-            <span style={{ fontSize: 28 }}>🧾</span>
+      <div className="pm-auth-card" style={{ maxWidth: 420, margin: '0 auto' }}>
+        {/* Header */}
+        <div className="pm-auth-header">
+          <div className="pm-auth-icon">
+            <UserPlus size={24} />
           </div>
-          <h2 className="auth-title mt-3 mb-0">REGISTER</h2>
+          <h1 className="pm-auth-title">Créer un compte</h1>
+          <p className="pm-auth-subtitle">
+            Rejoignez la communauté des collectionneurs
+          </p>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label">Username</label>
-            <input
-              className="form-control"
-              placeholder="ex: horrorFan"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
+          {/* Username Field */}
+          <div className="pm-input-group">
+            <label className="pm-label" htmlFor="username">
+              Nom d'utilisateur
+            </label>
+            <div className="pm-input-icon-wrapper">
+              <input
+                id="username"
+                type="text"
+                className="pm-input"
+                placeholder="HorrorFan666"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoComplete="username"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <span className="pm-input-icon">
+                <User size={18} />
+              </span>
+            </div>
           </div>
 
-          <div className="mb-3">
-            <label className="form-label">Email</label>
-            <input
-              className="form-control"
-              placeholder="ex: user@mail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-            />
+          {/* Email Field */}
+          <div className="pm-input-group">
+            <label className="pm-label" htmlFor="email">
+              Adresse email
+            </label>
+            <div className="pm-input-icon-wrapper">
+              <input
+                id="email"
+                type="email"
+                className="pm-input"
+                placeholder="vous@exemple.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <span className="pm-input-icon">
+                <Mail size={18} />
+              </span>
+            </div>
           </div>
 
-          <div className="mb-2">
-            <label className="form-label">Mot de passe</label>
-            <input
-              className="form-control"
-              placeholder="********"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              required
-            />
+          {/* Password Field */}
+          <div className="pm-input-group">
+            <label className="pm-label" htmlFor="password">
+              Mot de passe
+            </label>
+            <div className="pm-input-icon-wrapper">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className="pm-input"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                autoComplete="new-password"
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="pm-input-icon"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  pointerEvents: 'auto'
+                }}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: 'var(--space-xs)' }}>
+              8 caractères minimum
+            </p>
           </div>
 
+          {/* Terms Checkbox */}
+          <div style={{ marginBottom: 'var(--space-lg)' }}>
+            <label className="pm-checkbox-wrapper">
+              <input
+                type="checkbox"
+                className="pm-checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+              />
+              <span className="pm-checkbox-label">
+                J'accepte les{' '}
+                <a href="#" className="pm-auth-footer-link" style={{ fontSize: 'inherit' }}>
+                  conditions d'utilisation
+                </a>
+                {' '}et la{' '}
+                <a href="#" className="pm-auth-footer-link" style={{ fontSize: 'inherit' }}>
+                  politique de confidentialité
+                </a>
+              </span>
+            </label>
+          </div>
+
+          {/* Error Alert */}
           {error && (
-            <div className="alert alert-danger py-2 mt-3" role="alert">
+            <div className="pm-alert pm-alert-error">
               {error}
             </div>
           )}
 
-          <button className="btn btn-light w-100 fw-semibold mt-3" disabled={loading}>
-            {loading ? 'Création...' : 'Créer le compte'}
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="pm-btn pm-btn-primary pm-btn-lg"
+            style={{ width: '100%' }}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="pm-spinner" />
+                Création...
+              </>
+            ) : (
+              'Créer mon compte'
+            )}
           </button>
-
-          <div className="text-center mt-3">
-            <small>
-              Déjà un compte ? <Link className="text-white fw-semibold" to="/login">Se connecter</Link>
-            </small>
-          </div>
         </form>
+
+        {/* Footer */}
+        <div className="pm-auth-footer">
+          <p className="pm-auth-footer-text">
+            Déjà un compte ?{' '}
+            <Link to="/" className="pm-auth-footer-link">
+              Se connecter
+            </Link>
+          </p>
+        </div>
       </div>
     </AuthLayout>
   );

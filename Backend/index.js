@@ -153,31 +153,39 @@ app.post('/auth/login', async (req, res) => {
 })
 
 /**
- * ✅ PRODUITS + RECHERCHE
+ * ✅ PRODUITS + RECHERCHE + FILTRE CATÉGORIE
  * GET /products
  * GET /products?search=evil
+ * GET /products?category=figurines
+ * GET /products?search=evil&category=figurines
  */
 app.get('/products', async (req, res) => {
   const search = (req.query.search || '').trim()
+  const category = (req.query.category || '').trim()
 
   try {
-    if (!search) {
-      const result = await pool.query(
-        `SELECT id, titre, description, categorie, prix, image_url, created_at
-         FROM public.produits
-         ORDER BY id DESC`,
-      )
-      return res.json(result.rows)
+    let query = `SELECT id, titre, description, categorie, prix, image_url, created_at
+                 FROM public.produits`
+    const conditions = []
+    const params = []
+
+    if (search) {
+      params.push(`%${search}%`)
+      conditions.push(`(titre ILIKE $${params.length} OR description ILIKE $${params.length})`)
     }
 
-    const result = await pool.query(
-      `SELECT id, titre, description, categorie, prix, image_url, created_at
-       FROM public.produits
-       WHERE titre ILIKE $1 OR description ILIKE $1
-       ORDER BY id DESC`,
-      [`%${search}%`],
-    )
+    if (category) {
+      params.push(category)
+      conditions.push(`LOWER(categorie) = LOWER($${params.length})`)
+    }
 
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`
+    }
+
+    query += ` ORDER BY id DESC`
+
+    const result = await pool.query(query, params)
     return res.json(result.rows)
   } catch (err) {
     console.error('PRODUCTS error:', err)
