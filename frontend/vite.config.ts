@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import viteReact from '@vitejs/plugin-react'
@@ -12,5 +13,10 @@ export default defineConfig({
   },
   server: {
     port: 5173, // frontend sur un port différent du backend
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/__tests__/setup.ts'],
   },
 })

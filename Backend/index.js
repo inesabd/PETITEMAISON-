@@ -2,11 +2,16 @@ require('dotenv').config()
 
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 const { Pool } = require('pg')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 
 const app = express()
+
+// ✅ SÉCURITÉ: Headers HTTP (CSP, X-Frame-Options, HSTS, etc.)
+app.use(helmet())
 
 // ✅ CORS: local + prod (FRONTEND_URL sur Azure)
 const allowedOrigins = [
@@ -27,6 +32,21 @@ app.use(
   }),
 )
 
+// ✅ SÉCURITÉ: Rate limiting global (100 req/15min par IP)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { message: 'Trop de requêtes, réessayez plus tard' },
+})
+app.use(globalLimiter)
+
+// ✅ SÉCURITÉ: Rate limiting strict sur authentification (10 req/15min par IP)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Trop de tentatives, réessayez dans 15 minutes' },
+})
+
 app.use(express.json())
 
 // ✅ PostgreSQL (Azure = SSL en production)
@@ -42,15 +62,33 @@ const pool = new Pool({
       : false,
 })
 
+// ✅ SÉCURITÉ: Middleware JWT pour protéger les routes sensibles
+const authenticateJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Token requis' })
+  }
+
+  const token = authHeader.split(' ')[1]
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET)
+    next()
+  } catch {
+    return res.status(403).json({ message: 'Token invalide ou expiré' })
+  }
+}
+
 // 🔎 Route test
 app.get('/', (req, res) => {
   res.send('Backend OK ✅')
 })
 
-// 👤 Test users
-app.get('/users', async (req, res) => {
+// 👤 Users - PROTÉGÉ par JWT + exclut password_hash
+app.get('/users', authenticateJWT, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM public.utilisateurs')
+    const result = await pool.query(
+      'SELECT id, nom, email, created_at FROM public.utilisateurs',
+    )
     res.json(result.rows)
   } catch (error) {
     console.error('Erreur PostgreSQL:', error)
@@ -62,7 +100,7 @@ app.get('/users', async (req, res) => {
  * ✅ REGISTER
  * body: { username, email, password }
  */
-app.post('/auth/register', async (req, res) => {
+app.post('/auth/register', authLimiter, async (req, res) => {
   try {
     const { username, email, password } = req.body
 
@@ -102,7 +140,7 @@ app.post('/auth/register', async (req, res) => {
  * body: { email, password }
  * response: { token, user }
  */
-app.post('/auth/login', async (req, res) => {
+app.post('/auth/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body
 
@@ -195,6 +233,10 @@ app.get('/products', async (req, res) => {
 
 // ✅ Listen Azure: PORT fourni par Azure + host 0.0.0.0
 const PORT = process.env.PORT || 5000
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`API running on port ${PORT}`)
-})
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`API running on port ${PORT}`)
+  })
+}
+
+module.exports = app
